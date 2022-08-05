@@ -50,3 +50,4 @@
 # Tools
 
 1. [SFC Playground](https://sfc.vuejs.org)
+2. [Vue3 API](https://vuejs.org/api/application.html)
