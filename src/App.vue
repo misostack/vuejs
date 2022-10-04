@@ -1,11 +1,9 @@
 <template>
-  <div>
-    <Calculator></Calculator>
-  </div>
+  <SixJars></SixJars>
 </template>
 
 <script setup lang="ts">
-import Calculator from "./components/Calculator.vue";
+import SixJars from "./components/SixJars.vue";
 </script>
 
 <style scoped></style>
