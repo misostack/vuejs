@@ -13,23 +13,33 @@
             placeholder="0"
           />
         </p>
-        <h3>Left: {{ state.leftRatio }}</h3>
+        <h3>Left: {{ leftRatio }}</h3>
         <div class="grid grid-cols-6 gap-4 my-8">
-          <div v-for="bottle in state.bottles" :key="bottle.name">
+          <div
+            class="text-center"
+            v-for="bottle in state.bottles"
+            :key="bottle.name"
+          >
             <h3>{{ bottle.name }}</h3>
-            <h4>{{ bottle.ratio }}</h4>
+            <h4>{{ `${bottle.ratio}%` }}</h4>
             <h5>
               {{ parseLocaleNumber((bottle.ratio * balanceValue) / 100) }}
             </h5>
             <div>
-              <button>
+              <button
+                class="p-1 mx-1 text-white bg-blue-600 rounded focus:outline-none disabled:opacity-50"
+                :disabled="bottle.disabledIncrease"
+              >
                 <span
                   class="material-icons"
                   v-on:click="adjustRatio(bottle.name, 'increase')"
                   >add</span
                 >
               </button>
-              <button>
+              <button
+                class="p-1 mx-1 text-white bg-blue-600 rounded focus:outline-none disabled:opacity-50"
+                :disabled="bottle.disabledDecrease"
+              >
                 <span
                   class="material-icons"
                   v-on:click="adjustRatio(bottle.name, 'decrease')"
@@ -71,19 +81,35 @@ function reverseLocaleNumber(stringNumber: string, locale: string = "en-EN") {
 // application
 const initialValues = {
   bottles: [
-    { name: "FFA", ratio: 10 },
-    { name: "PLAY", ratio: 10 },
-    { name: "LTSS", ratio: 10 },
-    { name: "EDU", ratio: 10 },
-    { name: "GIVE", ratio: 5 },
-    { name: "NEC", ratio: 55 },
+    { name: "FFA", ratio: 10, disabledIncrease: true, disabledDecrease: false },
+    {
+      name: "PLAY",
+      ratio: 10,
+      disabledIncrease: true,
+      disabledDecrease: false,
+    },
+    {
+      name: "LTSS",
+      ratio: 10,
+      disabledIncrease: true,
+      disabledDecrease: false,
+    },
+    { name: "EDU", ratio: 10, disabledIncrease: true, disabledDecrease: false },
+    { name: "GIVE", ratio: 5, disabledIncrease: true, disabledDecrease: false },
+    { name: "NEC", ratio: 55, disabledIncrease: true, disabledDecrease: false },
   ],
-  leftRatio: 0,
 };
+const initialBottleRatios: { [key: string]: number } = {};
+initialValues.bottles.map((b) => {
+  Reflect.set(initialBottleRatios, b.name, b.ratio);
+});
+
 // 6 bottles
 const state = reactive(initialValues);
-let balance = reactive({ value: "" });
-let balanceValue = ref(0);
+const balance = reactive({ value: "" });
+const balanceValue = ref(0);
+const leftRatio = ref(0);
+const bottleRatios = reactive(initialBottleRatios);
 
 watch(balance, (newBalance, oldBalance) => {
   const balanceNumber = reverseLocaleNumber(newBalance.value);
@@ -91,15 +117,43 @@ watch(balance, (newBalance, oldBalance) => {
   balance.value = parseLocaleNumber(balanceNumber);
 });
 
+watch(leftRatio, (newLeftRatio) => {
+  // enable increase for all bottles
+  if (newLeftRatio > 0) {
+    state.bottles.map((b) => (b.disabledIncrease = false));
+  }
+});
+
+watch(bottleRatios, (ratios) => {
+  Reflect.ownKeys(ratios).map((k) => {
+    const ratio = Reflect.get(ratios, k);
+    const bottle = state.bottles.find((b) => b.name === k);
+    if (bottle) {
+      bottle.disabledDecrease = ratio === 0;
+    }
+  });
+});
+
 const adjustRatio = (name: string, type: "increase" | "decrease") => {
   for (let i = 0; i < state.bottles.length; i++) {
-    if (type === "increase" && state.leftRatio === 0) {
+    // can not increase if no ratio is left
+    if (type === "increase" && leftRatio.value === 0) {
       return;
     }
+    // can not decrease if bottle ratio is running out
+    if (
+      type === "decrease" &&
+      state.bottles[i].name === name &&
+      state.bottles[i].ratio == 0
+    ) {
+      return;
+    }
+    // default: can adjust the ratio of bottle
     if (state.bottles[i].name === name) {
       const adjustValue = type === "increase" ? 1 : -1;
       state.bottles[i].ratio += adjustValue;
-      state.leftRatio -= adjustValue;
+      leftRatio.value -= adjustValue;
+      bottleRatios[name] = leftRatio.value;
     }
   }
 };
